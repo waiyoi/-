@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>抱擁</title>
+  <style>
+    :root{
+      --frog-ink:#0f3d2e;
+      --frog-green:#56b66b;
+      --frog-leaf:#3fa35a;
+      --frog-lime:#c7f464;
+      --frog-sky:#e8fff2;
+      --frog-shadow:rgba(16,60,46,.2);
+      --paper:#ffffffee;
+    }
+    /* かわいいカエル池っぽい背景 */
+    body{
+      margin:0; font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", sans-serif;
+      color:var(--frog-ink);
+      background:
+        radial-gradient(circle at 10% 15%, rgba(255,255,255,.35) 0 20%, transparent 21%),
+        radial-gradient(circle at 80% 30%, rgba(255,255,255,.35) 0 18%, transparent 19%),
+        radial-gradient(circle at 25% 80%, rgba(255,255,255,.35) 0 14%, transparent 15%),
+        linear-gradient(135deg, #b4f1c8 0%, #7be0a1 40%, #63d091 60%, #b7fbd3 100%);
+      min-height:100svh;
+    }
+    .wrap{ max-width:1080px; margin:0 auto; padding:24px; }
+    /* ヘッダー（カエル顔モチーフ） */
+    .hero{
+      position:relative; margin:16px 0 28px; padding:32px 24px 28px; border-radius:28px;
+      background:linear-gradient(180deg, var(--frog-lime), var(--frog-green));
+      box-shadow: 0 10px 20px var(--frog-shadow), inset 0 1px 0 rgba(255,255,255,.5);
+      color:#08301f;
+      overflow:hidden;
+    }
+    .hero::before,.hero::after{ /* カエルのおめめ */
+      content:""; position:absolute; top:-18px; width:90px; height:90px; border-radius:50%;
+      background:radial-gradient(circle at 40% 40%, #fff 0 38px, #0e3124 39px 46px, transparent 47px);
+      filter: drop-shadow(0 4px 2px rgba(0,0,0,.15));
+    }
+    .hero::before{left:28px}
+    .hero::after{right:28px}
+    .hero h1{ margin:0; font-size: clamp(28px, 4vw, 40px); letter-spacing:.02em; }
+    .hero p{ margin:.5em 0 0; opacity:.9 }
+    .chip{
+      display:inline-flex; gap:.5em; align-items:center; padding:.5em .9em; border-radius:999px;
+      background:#ffffffc9; box-shadow: 0 3px 6px var(--frog-shadow);
+      font-weight:600; margin-top:14px;
+    }
+
+    /* カード */
+    .grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:18px; }
+    .card{ background:var(--paper); backdrop-filter: blur(6px); border-radius:20px; padding:18px 18px 20px; box-shadow:0 8px 20px var(--frog-shadow); }
+    .card h2{ margin:0 0 .4em; font-size:1.1rem; letter-spacing:.06em; }
+    .kvs{ display:grid; gap:10px; }
+    .kv{ display:flex; gap:10px; align-items:flex-start; }
+    .kv b{ min-width:6ch; font-feature-settings:"palt" 1; }
+    .badge{ display:inline-block; padding:.35em .7em; background: #eaffd2; border:1px solid #bde577; border-radius:999px; margin:.15em .25em 0 0; }
+    .list{ padding-left:1em; margin:.4em 0; }
+
+    /* リンクセクション（睡蓮風のリンク） */
+    .links{
+      display:flex; flex-wrap:wrap; gap:12px; margin-top:10px;
+    }
+    .pad{
+      --pad: var(--frog-leaf);
+      position:relative; display:inline-flex; align-items:center; gap:.6em; padding:12px 16px; border-radius:20px 22px 26px 18px / 18px 22px 26px 20px;
+      background: radial-gradient(120% 120% at 10% 10%, #d8ffd8 0 30%, #baf7bf 31% 60%, var(--pad) 61%);
+      color:#0f2c1f; text-decoration:none; font-weight:700; box-shadow:0 6px 14px var(--frog-shadow), inset 0 1px 0 #ffffffa0;
+      transition: transform .08s ease, box-shadow .2s ease;
+    }
+    .pad:hover{ transform: translateY(-2px); box-shadow:0 10px 18px var(--frog-shadow), inset 0 1px 0 #ffffffc0; }
+
+    /* フッター */
+    footer{ text-align:center; opacity:.8; padding:16px 0 28px; font-size:.9rem; }
+
+    /* 小さな装飾のカエル＆トンボ */
+    .corner-deco{ position:fixed; right:8px; bottom:8px; font-size:28px; filter: drop-shadow(0 3px 2px rgba(0,0,0,.15)); user-select:none; }
+
+    /* アクセシビリティ */
+    :focus-visible{ outline:3px dashed #073e2c; outline-offset:4px; border-radius:8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero" aria-label="カエル風ヒーロー">
+      <h1>🐸 カエルの鳴き声の秘密</h1>
+    </header>
+
+    <main class="grid" aria-live="polite">
+      <section class="card" aria-labelledby="profile">
+        <div class="kvs">
+          <div class="kv"><b>鳴き声を出すカエルは実はオスだけ！</span></div>
+          <div class="kv"><b>カエルはオスがメスに抱きついて求愛するため、オスのカエルを持ち上げるとカエルはオスに抱き着かれたと勘違いして、僕オスだよーと伝えるために鳴き声を出す。</span></div>
+      </section>
+
+  </div>
+
+  <div class="corner-deco" aria-hidden="true" title="池の見張り番">🐸🪰</div>
+</body>
+</html>
