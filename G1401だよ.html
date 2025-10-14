@@ -1,0 +1,88 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>専用報告書</title>
+  <style>
+    body {
+      background-color: #000;
+      color: #0f0;
+      font-family: "Courier New", monospace;
+      padding: 2em;
+    }
+    h1 {
+      color: #0f0;
+    }
+    input[type="password"] {
+      background-color: #111;
+      color: #0f0;
+      border: 1px solid #0f0;
+      padding: 0.5em;
+      font-size: 1em;
+      margin-right: 1em;
+    }
+    button {
+      background-color: #0f0;
+      color: #000;
+      border: none;
+      padding: 0.5em 1em;
+      cursor: pointer;
+    }
+    .report {
+      display: none;
+      margin-top: 2em;
+      background-color: #111;
+      padding: 2em;
+      border-radius: 10px;
+    }
+    ul {
+      list-style-type: square;
+    }
+  </style>
+</head>
+<body>
+  <h1>【機密】専用週報</h1>
+  <p>認証された方のみ、以下の報告書へアクセス可能です。</p>
+  <label for="code">暗証コード：</label>
+  <input type="password" id="code" placeholder="コードを入力">
+  <button onclick="validate()">確認</button>
+  
+   
+   
+   
+   
+    <div class="box">
+    <marquee scrollamount="8" bgcolor="#84C98B" style="color: white; font-size: 20px;">
+      🐻いらっしゃーい！！君は１番目のお客様！！🐻
+    </marquee>
+
+  <div class="report" id="report">
+    <h2>🔒 機密活動報告：第34週</h2>
+    <ul>
+      <liアンパンうめえ</li>
+      <li>アンパン</li>
+      <li>たらこ</li>
+      <li>メロンパン</li>
+      <li>カルビ</li>
+      <li>たこ焼き</li>
+    </ul>
+    <p>次回報告予定日：8月26日</p>
+    <p>※本データは閲覧後24時間で自動消去されます。</p>
+  </div>
+
+  <script>
+    function validate() {
+      const input = document.getElementById('code').value;
+      const section = document.getElementById('report');
+      if (input === "G1401") {
+ 
+       section.style.display = 'block';
+      } else {
+        alert("認証失敗：暗証コードが違います。");
+      }
+    }
+  </script>
+</body>
+</html>
