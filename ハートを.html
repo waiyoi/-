@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ハニーのハートをシューティング</title>
+<style>
+  html, body { margin:0; padding:0; height:100%; overflow:hidden; }
+  body {
+    background: radial-gradient(circle at 50% 20%, rgba(255,120,180,0.22), rgba(10,12,24,1) 62%);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    color: rgba(255,255,255,0.92);
+  }
+  canvas { position: fixed; inset: 0; width:100%; height:100%; display:block; }
+
+  .ui {
+    position: fixed;
+    left: 16px;
+    top: 14px;
+    z-index: 2;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 14px;
+    padding: 10px 12px;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.28);
+    user-select: none;
+  }
+  .ui .title { font-weight: 700; font-size: 14px; letter-spacing: .04em; }
+  .ui .line { font-size: 12px; opacity: .9; margin-top: 4px; line-height: 1.4; }
+
+  .center {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 2;
+    width: min(520px, calc(100vw - 36px));
+    padding: 18px 16px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.9);
+    color: rgba(20,20,28,0.95);
+    box-shadow: 0 14px 40px rgba(0,0,0,0.35);
+    display: none;
+  }
+  .center h2 { margin: 0 0 8px; font-size: 18px; }
+  .center p { margin: 0; font-size: 13px; line-height: 1.7; }
+  .center button {
+    margin-top: 12px;
+    border: 0;
+    border-radius: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    background: rgba(255, 92, 160, 0.95);
+    color: white;
+    font-weight: 700;
+    letter-spacing: .04em;
+    box-shadow: 0 12px 26px rgba(255,92,160,0.25);
+  }
+
+  .footerHint {
+    position: fixed;
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+    z-index: 2;
+    font-size: 12px;
+    opacity: .85;
+    text-shadow: 0 6px 18px rgba(0,0,0,0.55);
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+  <canvas id="g"></canvas>
+
+  <div class="ui">
+    <div class="title">💘 ハニーのハートをシューティング</div>
+    <div class="line" id="scoreLine">スコア: 0　/　コンボ: x1　/　ライフ: 3</div>
+    <div class="line">操作: ← → / A D で移動・Spaceで発射（スマホは下の画面タップで発射）</div>
+  </div>
+
+  <div class="center" id="panel">
+    <h2 id="panelTitle">GAME OVER</h2>
+    <p id="panelText">もう一回、ハニーの心を撃ち抜こう。</p>
+    <button id="restart">リトライ</button>
+  </div>
+
+  <div class="footerHint">🎯 ハートを当てるとスコアUP。ハニーのハート（大きい💗）に当てるとボーナス！</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('g');
+  const ctx = canvas.getContext('2d');
+  const scoreLine = document.getElementById('scoreLine');
+  const panel = document.getElementById('panel');
+  const panelTitle = document.getElementById('panelTitle');
+  const panelText = document.getElementById('panelText');
+  const restartBtn = document.getElementById('restart');
+
+  let DPR = 1, W = 0, H = 0;
+  function resize() {
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    W = Math.floor(window.innerWidth * DPR);
+    H = Math.floor(window.innerHeight * DPR);
+    canvas.width = W;
+    canvas.height = H;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  const rand = (a,b) => Math.random()*(b-a)+a;
+
+  // ゲーム状態
+  let running = true;
+  let score = 0;
+  let combo = 1;
+  let life = 3;
+  let time = 0;
+
+  const keys = new Set();
+  window.addEventListener('keydown', (e) => {
+    if (['ArrowLeft','ArrowRight','a','d','A','D',' '].includes(e.key)) e.preventDefault();
+    keys.add(e.key);
+    if (e.key === ' ' && running) shoot();
+  }, { passive: false });
+  window.addEventListener('keyup', (e) => keys.delete(e.key));
+
+  // スマホ: 画面下半分タップで発射、左右ドラッグで移動
+  let touchActive = false;
+  let touchX = 0;
+  window.addEventListener('touchstart', (e) => {
+    const t = e.touches?.[0];
+    if (!t) return;
+    touchActive = true;
+    touchX = t.clientX;
+    if (running) shoot();
+  }, { passive: true });
+  window.addEventListener('touchmove', (e) => {
+    const t = e.touches?.[0];
+    if (!t) return;
+    touchX = t.clientX;
+  }, { passive: true });
+  window.addEventListener('touchend', () => { touchActive = false; }, { passive: true });
+
+  const player = {
+    x: W * 0.5,
+    y: H * 0.88,
+    w: 44 * DPR,
+    speed: 9.5 * DPR,
+    cooldown: 0,
+  };
+
+  const bullets = [];
+  const hearts = []; // 敵ハート
+  const pops = [];   // 破裂エフェクト
+
+  function reset() {
+    running = true;
+    score = 0;
+    combo = 1;
+    life = 3;
+    time = 0;
+
+    bullets.length = 0;
+    hearts.length = 0;
+    pops.length = 0;
+
+    player.x = W * 0.5;
+    player.y = H * 0.88;
+    player.cooldown = 0;
+
+    panel.style.display = 'none';
+  }
+
+  restartBtn.addEventListener('click', () => reset());
+
+  function shoot() {
+    if (player.cooldown > 0) return;
+    bullets.push({ x: player.x, y: player.y - 22 * DPR, vy: -14.5 * DPR });
+    player.cooldown = 7; // 連射制限
+  }
+
+  function spawnHeart() {
+    const isHoney = Math.random() < 0.14; // たまに大きいハニーのハート
+    const size = (isHoney ? rand(34, 48) : rand(18, 28)) * DPR;
+    hearts.push({
+      x: rand(size, W - size),
+      y: -size,
+      vy: (isHoney ? rand(1.6, 2.6) : rand(2.2, 4.2)) * DPR,
+      vx: rand(-0.7, 0.7) * DPR,
+      r: size,
+      isHoney,
+      wob: rand(0, Math.PI * 2),
+    });
+  }
+
+  function addPop(x, y, isHoney) {
+    const n = isHoney ? 26 : 16;
+    for (let i = 0; i < n; i++) {
+      const a = rand(0, Math.PI * 2);
+      const sp = rand(2.0, isHoney ? 6.0 : 4.2) * DPR;
+      pops.push({ x, y, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp, life: 0, max: Math.floor(rand(18, 34)), isHoney });
+    }
+  }
+
+  function circleHit(ax, ay, ar, bx, by, br) {
+    const dx = ax - bx, dy = ay - by;
+    return (dx*dx + dy*dy) <= (ar + br) * (ar + br);
+  }
+
+  function endGame(win = false) {
+    running = false;
+    panel.style.display = 'block';
+    panelTitle.textContent = win ? 'LOVE GET!' : 'GAME OVER';
+    panelText.textContent = win
+      ? '源一「これでハニーの心、確保……」'
+      : '源一「くっ…外した…次こそハニーの心を…」';
+  }
+
+  // 背景の星
+  const stars = Array.from({ length: 120 }, () => ({
+    x: Math.random(), y: Math.random(), r: Math.random()*1.2 + 0.2,
+    s: Math.random()*0.35 + 0.05
+  }));
+
+  function drawHeartEmoji(x, y, size, isHoney) {
+    ctx.font = `${size}px system-ui, "Segoe UI Emoji", "Apple Color Emoji"`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(isHoney ? '💗' : '💖', x, y);
+  }
+
+  function drawPlayer() {
+    // 源一 = ちょいワル発射台（ハート砲）
+    ctx.save();
+    ctx.translate(player.x, player.y);
+
+    // 砲台本体
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.roundRect(-player.w*0.8, -player.w*0.35, player.w*1.6, player.w*0.7, 10*DPR);
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fill();
+
+    // 砲口（ハート）
+    ctx.font = `${26*DPR}px system-ui, "Segoe UI Emoji", "Apple Color Emoji"`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('💘', 0, -18*DPR);
+
+    ctx.restore();
+  }
+
+  // roundRect polyfill for older browsers
+  if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
+      const rr = Math.min(r, w/2, h/2);
+      this.beginPath();
+      this.moveTo(x+rr,y);
+      this.arcTo(x+w,y,x+w,y+h,rr);
+      this.arcTo(x+w,y+h,x,y+h,rr);
+      this.arcTo(x,y+h,x,y,rr);
+      this.arcTo(x,y,x+w,y,rr);
+      this.closePath();
+      return this;
+    };
+  }
+
+  function updateUI() {
+    scoreLine.textContent = `スコア: ${score}　/　コンボ: x${combo}　/　ライフ: ${life}`;
+  }
+
+  function step() {
+    // 背景
+    ctx.clearRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+    for (const s of stars) {
+      s.y += s.s * 0.003;
+      if (s.y > 1) s.y = 0;
+      ctx.beginPath();
+      ctx.arc(s.x * W, s.y * H, s.r * DPR, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,255,255,0.65)';
+      ctx.fill();
+    }
+
+    // 操作
+    if (running) {
+      let dx = 0;
+      if (keys.has('ArrowLeft') || keys.has('a') || keys.has('A')) dx -= 1;
+      if (keys.has('ArrowRight') || keys.has('d') || keys.has('D')) dx += 1;
+
+      if (touchActive) {
+        const tx = (touchX / window.innerWidth) * W;
+        const diff = tx - player.x;
+        dx += Math.max(-1, Math.min(1, diff / (70 * DPR)));
+      }
+
+      player.x += dx * player.speed;
+      player.x = Math.max(22 * DPR, Math.min(W - 22 * DPR, player.x));
+
+      if (player.cooldown > 0) player.cooldown -= 1;
+
+      // スポーン
+      time++;
+      const base = 22; // 値を小さくすると増える
+      const rate = Math.max(9, base - Math.floor(time / 600));
+      if (time % rate === 0) spawnHeart();
+    }
+
+    // 弾
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      const b = bullets[i];
+      b.y += b.vy;
+      // 描画
+      ctx.font = `${20*DPR}px system-ui, "Segoe UI Emoji", "Apple Color Emoji"`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('💞', b.x, b.y);
+      if (b.y < -40 * DPR) bullets.splice(i, 1);
+    }
+
+    // ハート（敵）
+    for (let i = hearts.length - 1; i >= 0; i--) {
+      const h = hearts[i];
+      h.wob += 0.03;
+      h.x += h.vx + Math.sin(h.wob) * 0.35 * DPR;
+      h.y += h.vy;
+
+      // 壁反射
+      if (h.x < h.r) { h.x = h.r; h.vx *= -1; }
+      if (h.x > W - h.r) { h.x = W - h.r; h.vx *= -1; }
+
+      drawHeartEmoji(h.x, h.y, h.r, h.isHoney);
+
+      // 下に落ちた
+      if (h.y > H + h.r) {
+        hearts.splice(i, 1);
+        combo = 1;
+        life -= 1;
+        if (life <= 0) endGame(false);
+        continue;
+      }
+
+      // 弾との当たり判定
+      for (let j = bullets.length - 1; j >= 0; j--) {
+        const b = bullets[j];
+        if (circleHit(h.x, h.y, h.r * 0.55, b.x, b.y, 10 * DPR)) {
+          bullets.splice(j, 1);
+          hearts.splice(i, 1);
+          addPop(h.x, h.y, h.isHoney);
+
+          const add = h.isHoney ? 120 : 35;
+          score += add * combo;
+          combo = Math.min(9, combo + (h.isHoney ? 2 : 1));
+
+          // 目標スコアでクリア
+          if (score >= 2500) endGame(true);
+          break;
+        }
+      }
+    }
+
+    // 破裂エフェクト
+    for (let i = pops.length - 1; i >= 0; i--) {
+      const p = pops[i];
+      p.life++;
+      p.vy += 0.06 * DPR;
+      p.x += p.vx;
+      p.y += p.vy;
+      const t = p.life / p.max;
+      const a = (1 - t) * 0.9;
+      ctx.globalAlpha = a;
+      ctx.font = `${(p.isHoney ? 18 : 14) * DPR}px system-ui, "Segoe UI Emoji", "Apple Color Emoji"`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(p.isHoney ? '💗' : '💖', p.x, p.y);
+      ctx.globalAlpha = 1;
+      if (p.life >= p.max) pops.splice(i, 1);
+    }
+
+    // プレイヤー
+    drawPlayer();
+
+    updateUI();
+    requestAnimationFrame(step);
+  }
+
+  // クリックで発射（PCでも楽）
+  window.addEventListener('mousedown', () => { if (running) shoot(); });
+
+  reset();
+  requestAnimationFrame
